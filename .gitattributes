@@ -1,0 +1,12 @@
+# text=auto , text eol=crlf , binary
+* text=auto
+
+*.c text
+*.h text
+*.cpp text
+*.cc text
+
+*.txt text
+
+*.png binary
+*.jpg binary
