@@ -37,7 +37,7 @@ int get_format_from_fmt(const char **fmt, enum AVSampleFormat sample_fmt) {
     return ret;
 }
 
-static int decode(AVCodecContext *dec_ctx, AVPacket *pkt, AVFrame *frame, FILE *outfile) {
+static int decode(AVCodecContext *dec_ctx, AVPacket *pkt, AVFrame *frame) {
     int i, ch;
     int ret, data_size;
     ret = avcodec_send_packet(dec_ctx, pkt); // pkt ->frame 解码
@@ -60,18 +60,18 @@ static int decode(AVCodecContext *dec_ctx, AVPacket *pkt, AVFrame *frame, FILE *
         if (frame->format <= AV_SAMPLE_FMT_DBL) {
             int16_t *frame_data = (int16_t *) frame->data[0];
             for (i = 0; i < frame->nb_samples; i++) { // 采样点遍历
-                fwrite(frame_data + i * data_size, 1, data_size * 2, outfile);
                 zAudioFormat.sample_rate = dec_ctx->sample_rate;
                 zAudioFormat.nb_channel = dec_ctx->ch_layout.nb_channels;
                 zAudioFormat.bit_size = data_size;
                 if (callback__) callback__(frame_data[i * data_size], &zAudioFormat);
             }
         } else {
+            int16_t *ch1 = (int16_t *) frame->data[0];
+            int16_t *ch2 = (int16_t *) frame->data[1];
             for (i = 0; i < frame->nb_samples; i++) { // 采样点遍历
-                // uint8_t *[8] frame->data 默认有8组通道数据.. 每个通道数据占据一个...
-                for (ch = 0; ch < dec_ctx->ch_layout.nb_channels - 1; ch++) {
-                    fwrite(frame->data[ch] + i * data_size, 1, data_size, outfile);
-                }
+                // 两个声道 单独储存..
+                int16_t i16_ch1 = ch1[i];
+                int16_t i16_ch2 = ch2[i];
             }
         }
     }
@@ -79,14 +79,14 @@ static int decode(AVCodecContext *dec_ctx, AVPacket *pkt, AVFrame *frame, FILE *
 }
 
 
-int decode_test(const char *infile_path, const char *outfile_path, Callback callback) {
+int decode_test(const char *infile_path, Callback callback) {
     callback__ = callback;
     const AVCodec *codec;
     AVCodecContext *ctx = NULL;
     AVCodecParserContext *parser = NULL;
 
     int ret;
-    FILE *infile, *outfile;
+    FILE *infile;
 
     uint8_t inbuf[AUDIO_INBUF_SIZE + AV_INPUT_BUFFER_PADDING_SIZE];
     uint8_t *data;
@@ -122,8 +122,6 @@ int decode_test(const char *infile_path, const char *outfile_path, Callback call
     printf("decode format: %d\n", ctx->sample_fmt);
     infile = fopen(infile_path, "rb");
     if (!infile) return -16;
-    outfile = fopen(outfile_path, "wb");
-    if (!outfile) return -17;
 
     data = inbuf;
     data_size = fread(inbuf, 1, AUDIO_INBUF_SIZE, infile);
@@ -140,7 +138,7 @@ int decode_test(const char *infile_path, const char *outfile_path, Callback call
         data_size -= ret;
 
         if (pkt->size > 0) {
-            decode(ctx, pkt, decoded_frame, outfile);
+            decode(ctx, pkt, decoded_frame);
         }
         // 重新从 file中读取,,然后 需要把原来 剩下的数据 移动到 数组开头.. 从文件中读取的数据将加入到其后.
         if (data_size < AUDIO_REFILL_THRESH) {
@@ -157,7 +155,7 @@ int decode_test(const char *infile_path, const char *outfile_path, Callback call
     pkt->data = NULL;
     pkt->size = 0;
     // pkt->data = NULL; 表示结束
-    decode(ctx, pkt, decoded_frame, outfile);
+    decode(ctx, pkt, decoded_frame);
     sfmt = ctx->sample_fmt;
     if (av_sample_fmt_is_planar(sfmt)) {
         const char *packed = av_get_sample_fmt_name(sfmt);
@@ -172,13 +170,11 @@ int decode_test(const char *infile_path, const char *outfile_path, Callback call
     int sample_rate = ctx->sample_rate;
 
     printf("Play the output audio file with the command:\n"
-           "ffplay -f %s -ac %d -ar %d %s\n",
-           fmt, n_channels, sample_rate,
-           outfile_path);
+           "ffplay -f %s -ac %d -ar %d pcm/file/path\n",
+           fmt, n_channels, sample_rate);
 
 
     fclose(infile);
-    fclose(outfile);
     avcodec_close(ctx);
     av_frame_free(&decoded_frame);
     av_packet_free(&pkt);

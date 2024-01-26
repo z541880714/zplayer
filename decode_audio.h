@@ -21,6 +21,6 @@ typedef struct ZAudioFormat {
 
 typedef void (*Callback)(const int16_t, ZAudioFormat *);
 
-int decode_test(const char *infile_path, const char *outfile_path, Callback callback);
+int decode_test(const char *infile_path, Callback callback);
 
 #endif //UNTITLED1_DECODE_AUDIO_H

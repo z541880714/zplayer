@@ -19,9 +19,14 @@ int size_c = 0; //当前 缓存的下标..
 Zfft zfft(FRAME_LEN);
 float fft_out[FRAME_LEN];
 
+
+const char *audio_path = nullptr;
+const char *out_dir = R"(C:\Users\lionel\Desktop)";
+
 const char *mp3_path = R"(../res/Maria Arredondo - Burning.mp3)";
 const char *pcm_path = R"(C:\Users\lionel\Desktop\bbb.txt)";
-const char *fft_out_path = R"(C:\Users\lionel\Desktop\spetruct.txt)";
+const char *fft_out_spectral = R"(C:\Users\lionel\Desktop\spetruct.txt)";
+const char *fft_out_power = R"(C:\Users\lionel\Desktop\spetruct.txt)";
 
 std::string fmt("%.4f");
 
@@ -50,13 +55,23 @@ void receivePcmU16Data(const int16_t data, ZAudioFormat *format) {
     }
 }
 
-int main() {
+
+int main(int len, char **args) {
+
+    if (len == 2) {
+        audio_path = args[0];
+        out_dir = args[1];
+    } else {
+        audio_path = mp3_path;
+    }
+    printf("audio_path:%s, out_dir:%s", audio_path, out_dir);
+
     int ret;
     zfft.init();
-    fft_out_file = fopen(fft_out_path, "wt");
+    fft_out_file = fopen(fft_out_spectral, "wt");
 //    int ret = encode_test(mp3_path);
     print2("ret: %d\n", ret);
-    ret = decode_test(mp3_path, pcm_path, receivePcmU16Data);
+    ret = decode_test(audio_path, receivePcmU16Data);
     print2("ret: %d\n", ret);
     fclose(fft_out_file);
     return 0;
