@@ -3,28 +3,15 @@
 //
 
 
-#include <stdio.h>
-#include <string.h>
-#include "libavutil/frame.h"
-#include "libavutil/mem.h"
-#include "libavcodec/avcodec.h"
+#include "decode_audio.h"
 
 #define AUDIO_INBUF_SIZE 20480
 #define AUDIO_REFILL_THRESH 4096
 
-/**
- * 声音数据
- * 长度
- * 采样率
- * 声道
- * 采样点的位数
- */
-typedef void(*Func_callback)(uint8_t *, int, int, int, int);
+Callback callback__ = NULL;
+ZAudioFormat zAudioFormat;
 
-Func_callback *callback = NULL;
-
-
-static int get_format_from_fmt(const char **fmt, enum AVSampleFormat sample_fmt) {
+int get_format_from_fmt(const char **fmt, enum AVSampleFormat sample_fmt) {
     int i = 0, ret = -1;
     struct sample_fmt_entry {
         enum AVSampleFormat sample_fmt;
@@ -71,10 +58,13 @@ static int decode(AVCodecContext *dec_ctx, AVPacket *pkt, AVFrame *frame, FILE *
         }
         // 带P 结尾的 每个声道数据单独 保存.. 不带P 结尾的, c1c2c1c2 排列..
         if (frame->format <= AV_SAMPLE_FMT_DBL) {
-            uint8_t *frame_data = frame->data[0];
+            int16_t *frame_data = (int16_t *) frame->data[0];
             for (i = 0; i < frame->nb_samples; i++) { // 采样点遍历
-                // 保存 单声道
-                fwrite(frame_data + i * data_size * 2, 1, data_size * 2, outfile);
+                fwrite(frame_data + i * data_size, 1, data_size * 2, outfile);
+                zAudioFormat.sample_rate = dec_ctx->sample_rate;
+                zAudioFormat.nb_channel = dec_ctx->ch_layout.nb_channels;
+                zAudioFormat.bit_size = data_size;
+                if (callback__) callback__(frame_data[i * data_size], &zAudioFormat);
             }
         } else {
             for (i = 0; i < frame->nb_samples; i++) { // 采样点遍历
@@ -88,7 +78,9 @@ static int decode(AVCodecContext *dec_ctx, AVPacket *pkt, AVFrame *frame, FILE *
     return ret;
 }
 
-int decode_test(const char *infile_path, const char *outfile_path) {
+
+int decode_test(const char *infile_path, const char *outfile_path, Callback callback) {
+    callback__ = callback;
     const AVCodec *codec;
     AVCodecContext *ctx = NULL;
     AVCodecParserContext *parser = NULL;
@@ -174,7 +166,6 @@ int decode_test(const char *infile_path, const char *outfile_path) {
                packed ? packed : "?");
         sfmt = av_get_packed_sample_fmt(sfmt);
     }
-
     const char *fmt;
     get_format_from_fmt(&fmt, sfmt);
     int n_channels = ctx->ch_layout.nb_channels;
@@ -184,6 +175,7 @@ int decode_test(const char *infile_path, const char *outfile_path) {
            "ffplay -f %s -ac %d -ar %d %s\n",
            fmt, n_channels, sample_rate,
            outfile_path);
+
 
     fclose(infile);
     fclose(outfile);
