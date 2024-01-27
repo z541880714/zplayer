@@ -14,7 +14,8 @@ file(COPY ${share_libs} DESTINATION /) #将dll 复制到执行目录,让程序�
 file(GLOB source_dir *.cpp *.c)
 add_executable(${PROJECT_NAME} ${source_dir}
         Zfft.cpp
-        Zfft.h)
+        Zfft.h
+        stringutil.h)
 
 target_link_libraries(${PROJECT_NAME}
         ${share_libs}
