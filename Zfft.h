@@ -23,7 +23,7 @@ public:
 
     }
 
-    int fft_1d(const float *in, float *out);
+    int fft_1d(const float *in);
 
     void updateSampleRate(int rate);
 
@@ -34,7 +34,7 @@ private:
     fftw_plan p;
 public:
     float *fft_out = nullptr;
-    int frame_len;
+    int fft_N;
 };
 
 

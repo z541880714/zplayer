@@ -23,7 +23,7 @@ Zfft zfft;
 
 
 string audio_path = R"(..\res\Maria Arredondo - Burning.mp3)";
-string out_dir = R"(C:\Users\lionel\Desktop\data)";
+string out_dir = R"(..\data_output)";
 string song_name;
 
 string fft_out_spectral_path;
@@ -35,7 +35,7 @@ FILE *fft_out_power_file = nullptr;
 float envelope[SPECTRAL_FRAME_LEN];
 
 void analyze_fft(float *in) {
-    zfft.fft_1d(in, zfft.fft_out);
+    zfft.fft_1d(in);
     float sum = 0;
     for (int i = 0; i < SPECTRAL_FRAME_LEN; ++i) {
         envelope[i] = zfft.fft_out[i];
@@ -51,11 +51,13 @@ void analyze_fft(float *in) {
 }
 
 // 单声道数据... 根据 采样率. 计算 20ms 的窗移, 为下一步计算fft 提供数据...
-void receivePcmU16Data(const int16_t data, ZAudioFormat *format) {
+void receivePcmU16Data(const INT_16 data, ZAudioFormat *format) {
     zfft.updateSampleRate(format->sample_rate);
     f_cache[size_c++] = data;
+//    float f = (1.0f - fabsf(data - 32768) / 32768.0f) * (data > 32768 ? -1.0f : 1.0f);
+//    f_cache[size_c++] = f * 32768;
     int windowTransfer = format->sample_rate / 50; // 窗移..
-    while (size_c >= zfft.frame_len) {
+    while (size_c >= zfft.fft_N) {
         analyze_fft(f_cache);
         size_c -= windowTransfer;
         memmove(f_cache, f_cache + windowTransfer, size_c * 4);
