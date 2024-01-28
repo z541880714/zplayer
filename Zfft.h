@@ -5,31 +5,36 @@
 #ifndef ZPLAYER_ZFFT_H
 #define ZPLAYER_ZFFT_H
 
+#include <cstdlib>
 #include "api/fftw3.h"
 
 class Zfft {
 public:
-    Zfft(int frame_len) : frame_len(frame_len) {}
+    Zfft() {}
 
     ~Zfft() {
         fftw_free(in);
         fftw_free(out);
         fftw_destroy_plan(p);
+        delete (fft_out);
     }
 
     void init() {
-        in = (double *) fftw_malloc(sizeof(double) * frame_len);
-        out = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * frame_len);
-        p = fftw_plan_dft_r2c_1d(frame_len, in, out, FFTW_ESTIMATE);
+
     }
 
     int fft_1d(const float *in, float *out);
 
+    void updateSampleRate(int rate);
+
 private:
-    int frame_len;
-    double *in;
+    int sample_rate = 0;
+    double *in = nullptr;
     fftw_complex *out;
     fftw_plan p;
+public:
+    float *fft_out = nullptr;
+    int frame_len;
 };
 
 
