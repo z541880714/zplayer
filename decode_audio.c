@@ -58,7 +58,7 @@ static int decode(AVCodecContext *dec_ctx, AVPacket *pkt, AVFrame *frame) {
         }
         // 带P 结尾的 每个声道数据单独 保存.. 不带P 结尾的, c1c2c1c2 排列..
         if (frame->format <= AV_SAMPLE_FMT_DBL) {
-            int16_t *frame_data = (int16_t *) frame->data[0];
+            INT_16 *frame_data = (INT_16 *) frame->data[0];
             for (i = 0; i < frame->nb_samples; i++) { // 采样点遍历
                 zAudioFormat.sample_rate = dec_ctx->sample_rate;
                 zAudioFormat.nb_channel = dec_ctx->ch_layout.nb_channels;
@@ -66,12 +66,12 @@ static int decode(AVCodecContext *dec_ctx, AVPacket *pkt, AVFrame *frame) {
                 if (callback__) callback__(frame_data[i * data_size], &zAudioFormat);
             }
         } else {
-            int16_t *ch1 = (int16_t *) frame->data[0];
-            int16_t *ch2 = (int16_t *) frame->data[1];
+            INT_16 *ch1 = (INT_16 *) frame->data[0];
+            INT_16 *ch2 = (INT_16 *) frame->data[1];
             for (i = 0; i < frame->nb_samples; i++) { // 采样点遍历
                 // 两个声道 单独储存..
-                int16_t i16_ch1 = ch1[i];
-                int16_t i16_ch2 = ch2[i];
+                INT_16 i16_ch1 = ch1[i];
+                INT_16 i16_ch2 = ch2[i];
             }
         }
     }

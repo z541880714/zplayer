@@ -11,6 +11,7 @@
 #include "libavutil/mem.h"
 #include "libavcodec/avcodec.h"
 
+typedef uint16_t INT_16;
 
 typedef struct ZAudioFormat {
     int sample_rate;
@@ -19,7 +20,7 @@ typedef struct ZAudioFormat {
 } ZAudioFormat;
 
 
-typedef void (*Callback)(const int16_t, ZAudioFormat *);
+typedef void (*Callback)(const INT_16, ZAudioFormat *);
 
 int decode_test(const char *infile_path, Callback callback);
 

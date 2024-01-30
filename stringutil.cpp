@@ -4,7 +4,7 @@
 
 string wstring2string(wstring &ws) {
     char chars[ws.size() * 2];
-    sprintf(chars, "%ws", ws.c_str());
+    sprintf(chars, "%ls", ws.c_str());
     auto str = string(chars);
     return str;
 }

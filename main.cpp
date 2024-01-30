@@ -12,38 +12,44 @@ extern "C" {
 }
 using namespace std;
 
-#define  FRAME_LEN  2048
-#define  SPECTRAL_FRAME_LEN 200
+// 写入文件中的 每帧只需要写入 200 个数据.
+#define SPECTRAL_FRAME_LEN 200
+#define MAX_SHORT 32768
 
-float f_cache[FRAME_LEN * 2];
+
+float f_cache[10000];
 int size_c = 0; //当前 缓存的下标..
-
-Zfft zfft(FRAME_LEN);
-float fft_out[FRAME_LEN];
+Zfft zfft;
 
 
 string audio_path = R"(..\res\Maria Arredondo - Burning.mp3)";
-string out_dir = R"(C:\Users\lionel\Desktop)";
+string out_dir = R"(..\data_output)";
 string song_name;
 
 string fft_out_spectral_path;
 string fft_out_power_path;
 
-std::string fmt("%.4f");
-
 FILE *fft_out_spectral_file = nullptr;
 FILE *fft_out_power_file = nullptr;
-char content[20];
+float envelope[SPECTRAL_FRAME_LEN];
 
 void analyze_fft(float *in) {
-    zfft.fft_1d(in, fft_out);
+    zfft.fft_1d(in);
     float sum = 0;
     for (int i = 0; i < SPECTRAL_FRAME_LEN; ++i) {
-        fprintf(fft_out_spectral_file, "%.4f", fft_out[i]);
+        float delta = zfft.fft_out[i] - envelope[i];
+
+        float flag = delta < 0 ? -1.0f : 1.0f;
+        if (abs(delta) > 1) {
+            delta = flag * log2(abs(delta));
+            delta = flag * sqrt(abs(delta));
+        }
+
+        fprintf(fft_out_spectral_file, "%.4f", envelope[i]);
         if (i < SPECTRAL_FRAME_LEN - 1) {
             fprintf(fft_out_spectral_file, ",");
         }
-        sum += fft_out[i];
+        sum += envelope[i];
     }
     fprintf(fft_out_spectral_file, "\n");
     fprintf(fft_out_power_file, "%.4f", sum / SPECTRAL_FRAME_LEN);
@@ -51,10 +57,12 @@ void analyze_fft(float *in) {
 }
 
 // 单声道数据... 根据 采样率. 计算 20ms 的窗移, 为下一步计算fft 提供数据...
-void receivePcmU16Data(const int16_t data, ZAudioFormat *format) {
-    f_cache[size_c++] = data;
+void receivePcmU16Data(const INT_16 data, ZAudioFormat *format) {
+    zfft.updateSampleRate(format->sample_rate);
+    float f = (1.0f - fabsf(data - MAX_SHORT) / MAX_SHORT) * (data > MAX_SHORT ? -1.0f : 1.0f);
+    f_cache[size_c++] = f * 10000;
     int windowTransfer = format->sample_rate / 50; // 窗移..
-    while (size_c >= FRAME_LEN) {
+    while (size_c >= zfft.fft_N) {
         analyze_fft(f_cache);
         size_c -= windowTransfer;
         memmove(f_cache, f_cache + windowTransfer, size_c * 4);
