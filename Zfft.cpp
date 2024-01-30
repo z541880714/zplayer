@@ -45,8 +45,8 @@ void Zfft::updateSampleRate(int rate) {
     in = (double *) fftw_malloc(sizeof(double) * fft_N);
     if (out) fftw_free(out);
     out = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * fft_N);
-
     std::cout << "fft_N:" << fft_N << " delta freq:" << sample_rate * 1.0 / fft_N << std::endl;
+
     fftw_destroy_plan(p);
     p = fftw_plan_dft_r2c_1d(fft_N, in, out, FFTW_ESTIMATE);
 }

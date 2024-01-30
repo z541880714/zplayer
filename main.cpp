@@ -1,14 +1,17 @@
 
 
 #include <iostream>
+#include <sstream>
 #include "library.h"
 #include "Zfft.h"
 #include "stringutil.h"
+#include <io.h>
 
 extern "C" {
 #include "libavutil/cpu.h"
 #include "encode_audio.h"
 #include "decode_audio.h"
+
 }
 using namespace std;
 
@@ -16,9 +19,9 @@ using namespace std;
 #define SPECTRAL_FRAME_LEN 200
 #define MAX_SHORT 32768
 
-
 float f_cache[10000];
 int size_c = 0; //当前 缓存的下标..
+
 Zfft zfft;
 
 
@@ -38,13 +41,12 @@ void analyze_fft(float *in) {
     float sum = 0;
     for (int i = 0; i < SPECTRAL_FRAME_LEN; ++i) {
         float delta = zfft.fft_out[i] - envelope[i];
-
         float flag = delta < 0 ? -1.0f : 1.0f;
         if (abs(delta) > 1) {
-            delta = flag * log2(abs(delta));
-            delta = flag * sqrt(abs(delta));
+//            delta = flag * log2(abs(delta));
+//            delta = flag * sqrt(abs(delta));
         }
-
+        envelope[i] = delta * 0.65f;
         fprintf(fft_out_spectral_file, "%.4f", envelope[i]);
         if (i < SPECTRAL_FRAME_LEN - 1) {
             fprintf(fft_out_spectral_file, ",");
@@ -61,6 +63,7 @@ void receivePcmU16Data(const INT_16 data, ZAudioFormat *format) {
     zfft.updateSampleRate(format->sample_rate);
     float f = (1.0f - fabsf(data - MAX_SHORT) / MAX_SHORT) * (data > MAX_SHORT ? -1.0f : 1.0f);
     f_cache[size_c++] = f * 10000;
+
     int windowTransfer = format->sample_rate / 50; // 窗移..
     while (size_c >= zfft.fft_N) {
         analyze_fft(f_cache);
@@ -82,10 +85,15 @@ int main(int len, char **args) {
            audio_path.c_str());
     song_name = audio_path.substr(lastSeparatorIndex + 1, lastPointIndex - lastSeparatorIndex - 1);
 
-    fft_out_spectral_path = str_fmt(R"(C:\Users\lionel\Desktop\spetruct_%s.txt)", song_name.c_str());
-    fft_out_power_path = str_fmt(R"(C:\Users\lionel\Desktop\power_%s.txt)", song_name.c_str());
+
+    fft_out_spectral_path = str_fmt(R"(%s\spectral_%s.txt)", out_dir.c_str(), song_name.c_str());
+    fft_out_power_path = str_fmt(R"(%s\power_%s.txt)", out_dir.c_str(), song_name.c_str());
     printf("audio_path:%s, out_dir:%s, song name:%s, out_spectral:%s\n", audio_path.data(), out_dir.c_str(),
            song_name.c_str(), fft_out_spectral_path.c_str());
+    cout << out_dir << endl;
+    if (access(out_dir.c_str(), 0777) != 0) {
+        mkdir(out_dir.c_str());
+    }
     int ret;
     zfft.init();
     fft_out_spectral_file = fopen(fft_out_spectral_path.c_str(), "wt");

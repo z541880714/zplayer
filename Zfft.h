@@ -5,6 +5,7 @@
 #ifndef ZPLAYER_ZFFT_H
 #define ZPLAYER_ZFFT_H
 
+#include <cstdlib>
 #include "api/fftw3.h"
 
 // 目标 频域 相邻两个频点间的跨度..
@@ -12,7 +13,7 @@
 
 class Zfft {
 public:
-    Zfft() {}
+    Zfft() {};
 
     ~Zfft() {
         fftw_free(in);
@@ -34,10 +35,11 @@ public:
 
 
 private:
-    double *in;
+    double *in = nullptr;
     fftw_complex *out;
     fftw_plan p;
-    int sample_rate;
+    int sample_rate = 0;
+
 };
 
 
